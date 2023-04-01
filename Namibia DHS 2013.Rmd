@@ -1,0 +1,1514 @@
+---
+title: "Namibia DHS"
+author: "Caroline Owens"
+date: "2023-03-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+### DHS Namibia— Assessing wealth, status, and mental well-being using Namibia DHS data
+
+
+```{r package set-up, include = FALSE}
+##### Load Necessary packages 
+# install.packages("haven")
+# install.packages("FactoMineR")
+# install.packages("factoextra")
+# install.packages("FactoInvestigate")
+# install.packages("foregin")
+# install.packages("tidyverse")
+# install.packages("jtools")
+
+library(haven)
+library(FactoMineR)
+library(factoextra)
+library(FactoInvestigate)
+library(usethis)
+require(foreign)
+require(tidyverse)
+require(jtools)
+
+
+use_git_config(user.name = "ceowens", user.email = "ceowens@users.noreply.github.com")
+usethis::git_default_branch_configure()
+
+usethis::create_github_token()
+```
+
+
+
+```{r data import, include = FALSE}
+#### Set working directory
+setwd("/Users/carolineowens/Documents/HBA2019")
+getwd()
+
+#### Load files
+
+# Women's data file
+womennamibia<- read.spss("NMIR61FL.SAV", to.data.frame=TRUE, use.value.labels=TRUE)
+
+# Men's data file
+mennamibia<- read.spss("NMMR61FL.SAV", to.data.frame=TRUE, use.value.labels=TRUE)
+#mennamibia<- read_dta("NMMR61FL.dta")
+
+# Household member data file
+hhnamibia <- read.spss("NMHR61FL.SAV", to.data.frame=TRUE, use.value.labels=TRUE)
+
+# Check colnames
+womennamibia %>%  colnames()
+mennamibia %>%  colnames()
+hhnamibia %>% colnames()
+
+# Make the household names uppercase
+hhnamibia <- hhnamibia %>%
+  rename_all(., .funs = toupper)
+
+# Creates household weight variable
+hhnamibia$hhweight <- hhnamibia$HV005/1000000
+
+hhnamibia$MATCH <- 1:nrow(hhnamibia)
+
+```
+
+
+```{r create wealth dimensions, include = FALSE}
+#############################################
+## Create Wealth Dimensions From HH Assets ##
+#############################################
+
+####################################
+#############  Namibia  #############
+####################################
+namibiaavariables <- c("MATCH", "hhweight", 'HV201','HV205','HV206',  'HV207', 'HV208', 'HV209', 'HV210', 'HV211',
+                       'HV212', 'HV213',   'HV214',   'HV215',   'HV221', 'HV226',
+                       'HV243A', 'HV243B', 'HV243C', 'HV243D', 'HV244',  'HV245', 'HV246', 'HV246A',
+                       'HV246B', 'HV246C', 'HV246D','HV246E',  'HV246F', 'SH110G','SH110H',
+                       'SH110I','SH110J','SH110K','SH110L','SH110M','SH110N', 'SH110O', "HV247")
+
+# 'HV247'
+assetnamibia <- hhnamibia[namibiaavariables]
+
+##############################################
+## Grouping of Building Materials and Goods ##
+##############################################
+
+##HV201
+assetnamibia$PipedDwelling <- assetnamibia$HV201
+assetnamibia$PipedDwelling <- ifelse(assetnamibia$PipedDwelling=="Piped into dwelling", 1, 0)
+
+assetnamibia$PipedCompound <- assetnamibia$HV201
+assetnamibia$PipedCompound <- ifelse(assetnamibia$PipedCompound=="Piped to yard/plot", 1, 0)
+
+assetnamibia$PipedTap <- assetnamibia$HV201
+assetnamibia$PipedTap <- ifelse(assetnamibia$PipedTap=="Public tap/standpipe", 1, 0)
+
+assetnamibia$Tubewell <- assetnamibia$HV201
+assetnamibia$Tubewell <- ifelse(assetnamibia$Tubewell=="Tube well or borehole", 1, 0)
+
+assetnamibia$ProtectedWell <- assetnamibia$HV201
+assetnamibia$ProtectedWell <- ifelse(assetnamibia$ProtectedWell=="Protected well", 1, 0)
+
+assetnamibia$UNProtectedWell <- assetnamibia$HV201
+assetnamibia$UNProtectedWell <- ifelse(assetnamibia$UNProtectedWell=="Unprotected well", 1, 0)
+
+assetnamibia$ProtectedSpring <- assetnamibia$HV201
+assetnamibia$ProtectedSpring <- ifelse(assetnamibia$ProtectedSpring=="Protected spring", 1, 0)
+
+assetnamibia$UNProtectedSpring <- assetnamibia$HV201
+assetnamibia$UNProtectedSpring <- ifelse(assetnamibia$UNProtectedSpring=="Unprotected spring", 1, 0)
+
+assetnamibia$River <- assetnamibia$HV201
+assetnamibia$River <- ifelse(assetnamibia$River=="River/dam/lake/ponds/stream/canal/irrigation channel", 1, 0)
+
+assetnamibia$Rainwater <- assetnamibia$HV201
+assetnamibia$Rainwater <- ifelse(assetnamibia$Rainwater=="Rainwater", 1, 0)
+
+assetnamibia$Tankertruck <- assetnamibia$HV201
+assetnamibia$Tankertruck <- ifelse(assetnamibia$Tankertruck=="Tanker truck", 1, 0)
+
+assetnamibia$Cart_tank <- assetnamibia$HV201
+assetnamibia$Cart_tank <- ifelse(assetnamibia$Cart_tank=="Cart with small tank", 1, 0)
+
+assetnamibia$BottledWater <- assetnamibia$HV201
+assetnamibia$BottledWater <- ifelse(assetnamibia$BottledWater=="Bottled water", 1, 0)
+
+assetnamibia$OtherWater <- assetnamibia$HV201
+assetnamibia$OtherWater <- ifelse(assetnamibia$OtherWater=="Other", 1, 0)
+
+##HV205
+assetnamibia$FlushToPipe <- assetnamibia$HV205
+assetnamibia$FlushToPipe <- ifelse(assetnamibia$FlushToPipe=="Flush to piped sewer system", 1, 0)
+
+assetnamibia$FlushToSeptic <- assetnamibia$HV205
+assetnamibia$FlushToSeptic <- ifelse(assetnamibia$FlushToSeptic=="Flush to septic tank", 1, 0)
+
+assetnamibia$FlushToPit <- assetnamibia$HV205
+assetnamibia$FlushToPit <- ifelse(assetnamibia$FlushToPit=="Flush to pit latrine", 1, 0)
+
+assetnamibia$FlushToElsewhere <- assetnamibia$HV205
+assetnamibia$FlushToElsewhere <- ifelse(assetnamibia$FlushToElsewhere=="Flush to somewhere else", 1, 0)
+
+assetnamibia$FlushToDK <- assetnamibia$HV205
+assetnamibia$FlushToDK <- ifelse(assetnamibia$FlushToDK=="Flush, don't know where", 1, 0)
+
+assetnamibia$VIP <- assetnamibia$HV205
+assetnamibia$VIP <- ifelse(assetnamibia$VIP=="Ventilated Improved Pit latrine (VIP)", 1, 0)
+
+assetnamibia$PitSlab <- assetnamibia$HV205
+assetnamibia$PitSlab <- ifelse(assetnamibia$PitSlab=="Pit latrine with slab", 1, 0)
+
+assetnamibia$PitOpen <- assetnamibia$HV205
+assetnamibia$PitOpen <- ifelse(assetnamibia$PitOpen=="Pit latrine without slab/open pit", 1, 0)
+
+assetnamibia$NoFacility <- assetnamibia$HV205
+assetnamibia$NoFacility <- ifelse(assetnamibia$NoFacility=="No facility/bush/field", 1, 0)
+
+assetnamibia$CompostingToilet <- assetnamibia$HV205
+assetnamibia$CompostingToilet <- ifelse(assetnamibia$CompostingToilet=="Composting toilet", 1, 0)
+
+assetnamibia$BucketToilet <- assetnamibia$HV205
+assetnamibia$BucketToilet <- ifelse(assetnamibia$BucketToilet=="Bucket toilet", 1, 0)
+
+assetnamibia$HangingToilet <- assetnamibia$HV205
+assetnamibia$HangingToilet <- ifelse(assetnamibia$HangingToilet=="Hanging toilet/latrine", 1, 0)
+
+assetnamibia$OtherToilet <- assetnamibia$HV205
+assetnamibia$OtherToilet <- ifelse(assetnamibia$OtherToilet=="Other", 1, 0)
+
+##HV206
+assetnamibia$Electricty <- assetnamibia$HV206
+assetnamibia$Electricty <- ifelse(assetnamibia$Electricty=="Yes", 1, 0)
+
+#HV207
+assetnamibia$Radio <- assetnamibia$HV207
+assetnamibia$Radio <- ifelse(assetnamibia$Radio=="Yes", 1, 0)
+
+#HV208
+assetnamibia$Television <- assetnamibia$HV208
+assetnamibia$Television <- ifelse(assetnamibia$Television=="Yes", 1, 0)
+
+#HV209
+assetnamibia$Refrigerator <- assetnamibia$HV209
+assetnamibia$Refrigerator <- ifelse(assetnamibia$Refrigerator=="Yes", 1, 0)
+
+#HV210
+assetnamibia$Bike <- assetnamibia$HV210
+assetnamibia$Bike <- ifelse(assetnamibia$Bike=="Yes", 1, 0)
+
+#HV211
+assetnamibia$MotorBike <- assetnamibia$HV211
+assetnamibia$MotorBike <- ifelse(assetnamibia$MotorBike=="Yes", 1, 0)
+
+##HV212
+assetnamibia$Car <- assetnamibia$HV212
+assetnamibia$Car <- ifelse(assetnamibia$Car=="Yes", 1, 0)
+
+#HV213
+assetnamibia$FloorEarth <- assetnamibia$HV213
+assetnamibia$FloorEarth <- ifelse(assetnamibia$FloorEarth=="Earth/Sand", 1, 0)
+
+assetnamibia$FloorDung <- assetnamibia$HV213
+assetnamibia$FloorDung <- ifelse(assetnamibia$FloorDung=="Dung", 1, 0)
+
+assetnamibia$FloorWood <- assetnamibia$HV213
+assetnamibia$FloorWood <- ifelse(assetnamibia$FloorWood=="Wood planks", 1, 0)
+
+assetnamibia$FloorMud <- assetnamibia$HV213
+assetnamibia$FloorMud <- ifelse(assetnamibia$FloorMud=="Mud/Clay", 1, 0)
+
+assetnamibia$FloorPalm <- assetnamibia$HV213
+assetnamibia$FloorPalm <- ifelse(assetnamibia$FloorPalm=="Palm/Bamboo", 1, 0)
+
+assetnamibia$FloorParquet <- assetnamibia$HV213
+assetnamibia$FloorParquet <- ifelse(assetnamibia$FloorParquet=="Parquet or polished wood", 1, 0)
+
+assetnamibia$FloorVinyl <- assetnamibia$HV213
+assetnamibia$FloorVinyl <- ifelse(assetnamibia$FloorVinyl=="Vinyl or asphalt strips", 1, 0)
+
+assetnamibia$FloorCeramic <- assetnamibia$HV213
+assetnamibia$FloorCeramic <- ifelse(assetnamibia$FloorCeramic=="Ceramic tiles", 1, 0)
+
+assetnamibia$FloorCement <- assetnamibia$HV213
+assetnamibia$FloorCement <- ifelse(assetnamibia$FloorCement=="Cement", 1, 0)
+
+assetnamibia$FloorCarpet <- assetnamibia$HV213
+assetnamibia$FloorCarpet <- ifelse(assetnamibia$FloorCarpet=="Carpet", 1, 0)
+
+assetnamibia$FloorOther <- assetnamibia$HV213
+assetnamibia$FloorOther <- ifelse(assetnamibia$FloorOther=="Other", 1, 0)
+
+#HV214
+assetnamibia$WallNone <- assetnamibia$HV214
+assetnamibia$WallNone <- ifelse(assetnamibia$WallNone=="No walls", 1, 0)
+
+assetnamibia$WallCane <- assetnamibia$HV214
+assetnamibia$WallCane <- ifelse(assetnamibia$WallCane=="Cane / palm / trunks", 1, 0)
+table(assetnamibia$WallCane)
+
+assetnamibia$WallDirt <- assetnamibia$HV214
+assetnamibia$WallDirt <- ifelse(assetnamibia$WallDirt=="Dirt", 1, 0)
+
+assetnamibia$WallBambooMud <- assetnamibia$HV214
+assetnamibia$WallBambooMud <- ifelse(assetnamibia$WallBambooMud=="Bamboo with mud/clay/dung", 1, 0)
+
+assetnamibia$WallStickMud <- assetnamibia$HV214
+assetnamibia$WallStickMud <- ifelse(assetnamibia$WallStickMud=="Sticks with mud/clay/dung", 1, 0)
+
+
+assetnamibia$WallStoneMud <- assetnamibia$HV214
+assetnamibia$WallStoneMud <- ifelse(assetnamibia$WallStoneMud=="Stone with mud", 1, 0)
+
+assetnamibia$WallAdobe <- assetnamibia$HV214
+assetnamibia$WallAdobe <- ifelse(assetnamibia$WallAdobe=="Uncovered adobe", 1, 0)
+
+assetnamibia$WallPlywood <- assetnamibia$HV214
+assetnamibia$WallPlywood <- ifelse(assetnamibia$WallPlywood=="Plywood", 1, 0)
+
+assetnamibia$WallCarton <- assetnamibia$HV214
+assetnamibia$WallCarton <- ifelse(assetnamibia$WallCarton=="Cardboard", 1, 0)
+
+assetnamibia$WallReuse <- assetnamibia$HV214
+assetnamibia$WallReuse <- ifelse(assetnamibia$WallReuse=="Reused wood", 1, 0)
+
+assetnamibia$WallCement <- assetnamibia$HV214
+assetnamibia$WallCement <- ifelse(assetnamibia$WallCement=="Cement", 1, 0)
+
+assetnamibia$WallStoneLime <- assetnamibia$HV214
+assetnamibia$WallStoneLime <- ifelse(assetnamibia$WallStoneLime=="Stone with lime / cement", 1, 0)
+
+assetnamibia$Bricks <- assetnamibia$HV214
+assetnamibia$Bricks <- ifelse(assetnamibia$Bricks=="Bricks", 1, 0)
+
+assetnamibia$WallCementBlocks <- assetnamibia$HV214
+assetnamibia$WallCementBlocks <- ifelse(assetnamibia$WallCementBlocks=="Cement blocks/cement stones", 1, 0)
+
+assetnamibia$WallAdobeCovered <- assetnamibia$HV214
+assetnamibia$WallAdobeCovered <- ifelse(assetnamibia$WallAdobeCovered=="Covered adobe", 1, 0)
+
+assetnamibia$WallWoodPlank <- assetnamibia$HV214
+assetnamibia$WallWoodPlank <- ifelse(assetnamibia$WallWoodPlank=="Wood planks / shingles", 1, 0)
+
+assetnamibia$CorrugatedIron <- assetnamibia$HV214
+assetnamibia$CorrugatedIron <- ifelse(assetnamibia$CorrugatedIron=="Corrugated iron/zinc", 1, 0)
+
+assetnamibia$Tin <- assetnamibia$HV214
+assetnamibia$Tin <- ifelse(assetnamibia$Tin=="Tin", 1, 0)
+
+
+assetnamibia$WallOther <- assetnamibia$HV214
+assetnamibia$WallOther <- ifelse(assetnamibia$WallOther=="Other", 1, 0)
+
+##HV215
+assetnamibia$RoofNone <- assetnamibia$HV215
+assetnamibia$RoofNone <- ifelse(assetnamibia$RoofNone=="No roof", 1, 0)
+
+assetnamibia$RoofThatch <- assetnamibia$HV215
+assetnamibia$RoofThatch <- ifelse(assetnamibia$RoofThatch=="Thatch/palm leaf/ grass", 1, 0)
+
+assetnamibia$RoofSod <- assetnamibia$HV215
+assetnamibia$RoofSod <- ifelse(assetnamibia$RoofSod=="Sod", 1, 0)
+
+assetnamibia$RoofRusticMat <- assetnamibia$HV215
+assetnamibia$RoofRusticMat <- ifelse(assetnamibia$RoofRusticMat=="Rustic mat", 1, 0)
+
+assetnamibia$RoofPalm <- assetnamibia$HV215
+assetnamibia$RoofPalm <- ifelse(assetnamibia$RoofPalm=="Palm/bamboo", 1, 0)
+
+assetnamibia$RoofWoodPlanks <- assetnamibia$HV215
+assetnamibia$RoofWoodPlanks <- ifelse(assetnamibia$RoofWoodPlanks=="Wood planks", 1, 0)
+
+assetnamibia$RoofCardboard <- assetnamibia$HV215
+assetnamibia$RoofCardboard <- ifelse(assetnamibia$RoofCardboard=="Cardboard", 1, 0)
+
+assetnamibia$RoofSticks <- assetnamibia$HV215
+assetnamibia$RoofSticks <- ifelse(assetnamibia$RoofSticks=="Sticks with mud and dung", 1, 0)
+
+assetnamibia$RoofPVC <- assetnamibia$HV215
+assetnamibia$RoofPVC <- ifelse(assetnamibia$RoofPVC=="Plastic/PVC", 1, 0)
+
+
+assetnamibia$RoofIron <- assetnamibia$HV215
+assetnamibia$RoofIron <- ifelse(assetnamibia$RoofIron=="Corrugated iron sheet", 1, 0)
+
+assetnamibia$RoofWood <- assetnamibia$HV215
+assetnamibia$RoofWood <- ifelse(assetnamibia$RoofWood=="Wood", 1, 0)
+
+assetnamibia$RoofCalamine <- assetnamibia$HV215
+assetnamibia$RoofCalamine <- ifelse(assetnamibia$RoofCalamine=="Calamine/cement fiber", 1, 0)
+
+assetnamibia$RoofCement <- assetnamibia$HV215
+assetnamibia$RoofCement <- ifelse(assetnamibia$RoofCement=="Cement", 1, 0)
+
+assetnamibia$RoofShingle <- assetnamibia$HV215
+assetnamibia$RoofShingle <- ifelse(assetnamibia$RoofShingle=="Roofing shingles", 1, 0)
+
+assetnamibia$RoofTin <- assetnamibia$HV215
+assetnamibia$RoofTin <- ifelse(assetnamibia$RoofTin=="Tin", 1, 0)
+
+assetnamibia$RoofAsbestos <- assetnamibia$HV215
+assetnamibia$RoofAsbestos <- ifelse(assetnamibia$RoofAsbestos=="Asbestos sheet", 1, 0)
+
+assetnamibia$RoofSlate <- assetnamibia$HV215
+assetnamibia$RoofSlate <- ifelse(assetnamibia$RoofSlate=="Slate", 1, 0)
+
+assetnamibia$RoofOther <- assetnamibia$HV215
+assetnamibia$RoofOther <- ifelse(assetnamibia$RoofOther=="Other", 1, 0)
+
+##HV221
+assetnamibia$PhoneLandline <- assetnamibia$HV221
+assetnamibia$PhoneLandline <- ifelse(assetnamibia$PhoneLandline=="Yes", 1, 0)
+
+##HV226
+assetnamibia$FuelElectric <- assetnamibia$HV226
+assetnamibia$FuelElectric <- ifelse(assetnamibia$FuelElectric=="Electricity", 1, 0)
+
+assetnamibia$FuelLPG <- assetnamibia$HV226
+assetnamibia$FuelLPG <- ifelse(assetnamibia$FuelLPG=="LPG", 1, 0)
+
+assetnamibia$FuelNatural <- assetnamibia$HV226
+assetnamibia$FuelNatural <- ifelse(assetnamibia$FuelNatural=="Natural gas", 1, 0)
+
+assetnamibia$FuelBiogas <- assetnamibia$HV226
+assetnamibia$FuelBiogas <- ifelse(assetnamibia$FuelBiogas=="Biogas", 1, 0)
+
+assetnamibia$FuelKero <- assetnamibia$HV226
+assetnamibia$FuelKero <- ifelse(assetnamibia$FuelKero=="Kerosene", 1, 0)
+
+assetnamibia$FuelCoal <- assetnamibia$HV226
+assetnamibia$FuelCoal <- ifelse(assetnamibia$FuelCoal=="Coal, lignite", 1, 0)
+
+assetnamibia$FuelCharcoal <- assetnamibia$HV226
+assetnamibia$FuelCharcoal <- ifelse(assetnamibia$FuelCharcoal=="Charcoal", 1, 0)
+
+assetnamibia$FuelFirewood <- assetnamibia$HV226
+assetnamibia$FuelFirewood <- ifelse(assetnamibia$FuelFirewood=="Wood", 1, 0)
+
+#assetnamibia$FuelStraw <- assetnamibia$HV226
+#assetnamibia$FuelStraw <- ifelse(assetnamibia$FuelStraw=="Straw/shrubs/grass", 1, 0)
+
+assetnamibia$FuelAgrCrops <- assetnamibia$HV226
+assetnamibia$FuelAgrCrops <- ifelse(assetnamibia$FuelAgrCrops=="Agricultural crop", 1, 0)
+
+assetnamibia$FuelDung <- assetnamibia$HV226
+assetnamibia$FuelDung <- ifelse(assetnamibia$FuelDung=="Animal dung", 1, 0)
+
+assetnamibia$FuelNone <- assetnamibia$HV226
+assetnamibia$FuelNone <- ifelse(assetnamibia$FuelNone=="No food cooked in house", 1, 0)
+
+assetnamibia$FuelOther <- assetnamibia$HV226
+assetnamibia$FuelOther <- ifelse(assetnamibia$FuelOther=="Other", 1, 0)
+
+##HV243A
+assetnamibia$MobilePhone <- assetnamibia$HV243A
+assetnamibia$MobilePhone <- ifelse(assetnamibia$MobilePhone=="Yes", 1, 0)
+
+#HV243B
+assetnamibia$Watch <- assetnamibia$HV243B
+assetnamibia$Watch <- ifelse(assetnamibia$Watch=="Yes", 1, 0)
+
+#HV243C
+assetnamibia$Cart <- assetnamibia$HV243C
+assetnamibia$Cart <- ifelse(assetnamibia$Cart=="Yes", 1, 0)
+
+#HV243D
+assetnamibia$Boat <- assetnamibia$HV243D
+assetnamibia$Boat <- ifelse(assetnamibia$Boat=="Yes", 1, 0)
+
+#HV247
+assetnamibia$BankAccount <- assetnamibia$HV247
+assetnamibia$BankAccount <- ifelse(assetnamibia$BankAccount=="Yes", 1, 0)
+
+##SH110G
+assetnamibia$Computer <- assetnamibia$SH110G
+assetnamibia$Computer <- ifelse(assetnamibia$Computer=="Yes", 1, 0)
+
+##SH110H
+assetnamibia$Stove <- assetnamibia$SH110H
+assetnamibia$Stove <- ifelse(assetnamibia$Stove=="Yes", 1, 0)
+
+#SH110I
+assetnamibia$Microwave <- assetnamibia$SH110I
+assetnamibia$Microwave <- ifelse(assetnamibia$Microwave=="Yes", 1, 0)
+
+##SH110J
+assetnamibia$Internet <- assetnamibia$SH110J
+assetnamibia$Internet <- ifelse(assetnamibia$Internet=="Yes", 1, 0)
+
+##SH110K
+assetnamibia$Wardrobe <- assetnamibia$SH110K
+assetnamibia$Wardrobe <- ifelse(assetnamibia$Wardrobe=="Yes", 1, 0)
+
+#SH110L
+assetnamibia$Sofa <- assetnamibia$SH110L
+assetnamibia$Sofa <- ifelse(assetnamibia$Sofa=="Yes", 1, 0)
+
+#SH110M
+assetnamibia$Bed <- assetnamibia$SH110M
+assetnamibia$Bed <- ifelse(assetnamibia$Bed=="Yes", 1, 0)
+
+#SH110N
+assetnamibia$Table <- assetnamibia$SH110N
+assetnamibia$Table <- ifelse(assetnamibia$Table=="Yes", 1, 0)
+
+#SH110O
+assetnamibia$Windows <- assetnamibia$SH110O
+assetnamibia$Windows <- ifelse(assetnamibia$Windows=="Yes", 1, 0)
+
+####################################
+## Grouping of Livestock and Land ##
+####################################
+
+#Cattle by number
+Cattle0 <- c("None")
+Cattle1to2 <- c("1", "2")
+Cattle3to5 <- c("3","4", "5")
+Cattle6to10 <- c("6", "7", "8", "9", "10")
+CattleDK <- c("Unknown")
+CattleGT10 <- c("11", "12", "13", "14", "15", "16", "17", "18" ,"19", "20", "21", "22", " 23" , "24" ,"25" ,"26", "27" ,"28",
+                "29",  "30" ,"31" ,"32" ,"33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44"," 45", "46", "47", "48",
+                "49", "50", "51", '52', "53", "54", "55", "56", "57", "58" , "59", "60", "61"," 62", "63", "64"," 65", "66", "67",
+                "68", "69" , "70", "71", "72", "73", "74", "75", "76", "77", "78",  "79", "80", "81", '82' , " 83", "84", "84", "85",
+                "86", "87", "88", "89", "90", "91", "92", "93", "94", "95 or more")
+
+assetnamibia$Cattle0  <-ifelse(assetnamibia$HV246A %in% Cattle0, 1, 0 )
+assetnamibia$Cattle1to2  <-ifelse(assetnamibia$HV246A %in% Cattle1to2, 1, 0 )
+assetnamibia$Cattle3to5  <-ifelse(assetnamibia$HV246A %in% Cattle3to5, 1, 0 )
+assetnamibia$Cattle6to10  <-ifelse(assetnamibia$HV246A %in% Cattle6to10, 1, 0 )
+assetnamibia$CattleGT10  <-ifelse(assetnamibia$HV246A %in% CattleGT10, 1, 0 )
+assetnamibia$CattleDK  <-ifelse(assetnamibia$HV246A %in% CattleDK, 1, 0 )
+
+#Cow  by number
+Cow0 <- c("None")
+Cow1to2 <- c("1", "2")
+Cow3to5 <- c("3","4", "5")
+Cow6to10 <- c("6", "7", "8", "9", "10")
+CowDK <- c("Unknown")
+CowGT10 <- c("11", "12", "13", "14", "15", "16", "17", "18" ,"19", "20", "21", "22", " 23" , "24" ,"25" ,"26", "27" ,"28",
+             "29",  "30" ,"31" ,"32" ,"33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44"," 45", "46", "47", "48",
+             "49", "50", "51", '52', "53", "54", "55", "56", "57", "58" , "59", "60", "61"," 62", "63", "64"," 65", "66", "67",
+             "68", "69" , "70", "71", "72", "73", "74", "75", "76", "77", "78",  "79", "80", "81", '82' , " 83", "84", "84", "85",
+             "86", "87", "88", "89", "90", "91", "92", "93", "94", "95 or more")
+
+
+assetnamibia$Cow0  <-ifelse(assetnamibia$HV246B %in% Cow0, 1, 0 )
+assetnamibia$Cow1to2  <-ifelse(assetnamibia$HV246B %in% Cow1to2, 1, 0 )
+assetnamibia$Cow3to5  <-ifelse(assetnamibia$HV246B %in% Cow3to5, 1, 0 )
+assetnamibia$Cow6to10  <-ifelse(assetnamibia$HV246B %in% Cow6to10, 1, 0 )
+assetnamibia$CowGT10  <-ifelse(assetnamibia$HV246B %in% CowGT10, 1, 0 )
+assetnamibia$CowDK  <-ifelse(assetnamibia$HV246B %in% CowDK, 1, 0 )
+
+#Horse  by number
+Horse0 <- c("None")
+Horse1to2 <- c("1", "2")
+Horse3to5 <- c("3","4", "5")
+Horse6to10 <- c("6", "7", "8", "9", "10")
+HorseDK <- c("Unknown")
+HorseGT5 <- c(Horse6to10, "11", "12", "13", "14", "15", "16", "17", "18" ,"19", "20", "21", "22", " 23" , "24" ,"25" ,"26", "27" ,"28",
+              "29",  "30" ,"31" ,"32" ,"33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44"," 45", "46", "47", "48",
+              "49", "50", "51", '52', "53", "54", "55", "56", "57", "58" , "59", "60", "61"," 62", "63", "64"," 65", "66", "67",
+              "68", "69" , "70", "71", "72", "73", "74", "75", "76", "77", "78",  "79", "80", "81", '82' , " 83", "84", "84", "85",
+              "86", "87", "88", "89", "90", "91", "92", "93", "94", "95 or more")
+
+
+assetnamibia$Horse0  <-ifelse(assetnamibia$HV246C %in% Horse0, 1, 0 )
+assetnamibia$Horse1to2  <-ifelse(assetnamibia$HV246C %in% Horse1to2, 1, 0 )
+assetnamibia$Horse3to5  <-ifelse(assetnamibia$HV246C %in% Horse3to5, 1, 0 )
+assetnamibia$HorseGT5  <-ifelse(assetnamibia$HV246C %in% HorseGT5, 1, 0 )
+assetnamibia$HorseDK  <-ifelse(assetnamibia$HV246C %in% HorseDK, 1, 0 )
+
+# Goat by Number
+Goat0 <- c("None")
+Goat1to2 <- c("1", "2")
+Goat3to5 <- c("3","4", "5")
+Goat6to10 <- c("6", "7", "8", "9", "10")
+Goat11to20 <- c("11", "12", "13", "14", "15", "16", "17", "18" ,"19", "20")
+GoatDK <- c("Unknown")
+GoatGT20 <- c(  "21", "22", " 23" , "24" ,"25" ,"26", "27" ,"28",
+                "29",  "30" ,"31" ,"32" ,"33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44"," 45", "46", "47", "48",
+                "49", "50", "51", '52', "53", "54", "55", "56", "57", "58" , "59", "60", "61"," 62", "63", "64"," 65", "66", "67",
+                "68", "69" , "70", "71", "72", "73", "74", "75", "76", "77", "78",  "79", "80", "81", '82' , " 83", "84", "84", "85",
+                "86", "87", "88", "89", "90", "91", "92", "93", "94", "95 or more")
+
+assetnamibia$Goat0  <-ifelse(assetnamibia$HV246D %in% Goat0, 1, 0 )
+assetnamibia$Goat1to2  <-ifelse(assetnamibia$HV246D %in% Goat1to2, 1, 0 )
+assetnamibia$Goat3to5  <-ifelse(assetnamibia$HV246D %in% Goat3to5, 1, 0 )
+assetnamibia$Goat6to10 <- ifelse(assetnamibia$HV246D  %in% Goat6to10, 1, 0 )
+assetnamibia$Goat11to20  <- ifelse(assetnamibia$HV246D %in% Goat11to20, 1, 0 )
+assetnamibia$GoatGT20  <- ifelse(assetnamibia$HV246D %in% GoatGT20, 1, 0 )
+assetnamibia$GoatDK <- ifelse(assetnamibia$HV246D %in% GoatDK, 1, 0)
+
+# #Sheep by number HV246E
+Sheep0 <- c("None")
+Sheep1to2 <- c("1", "2")
+Sheep3to5 <- c("3","4", "5")
+Sheep6to10 <- c("6", "7", "8", "9", "10")
+Sheep11to20 <- c("11", "12", "13", "14", "15", "16", "17", "18" ,"19", "20")
+SheepDK <- c("Unknown")
+SheepGT20 <- c(  "21", "22", " 23" , "24" ,"25" ,"26", "27" ,"28",
+                 "29",  "30" ,"31" ,"32" ,"33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44"," 45", "46", "47", "48",
+                 "49", "50", "51", '52', "53", "54", "55", "56", "57", "58" , "59", "60", "61"," 62", "63", "64"," 65", "66", "67",
+                 "68", "69" , "70", "71", "72", "73", "74", "75", "76", "77", "78",  "79", "80", "81", '82' , " 83", "84", "84", "85",
+                 "86", "87", "88", "89", "90", "91", "92", "93", "94", "95 or more")
+
+
+assetnamibia$Sheep0  <-ifelse(assetnamibia$HV246E %in% Sheep0, 1, 0 )
+assetnamibia$Sheep1to2  <-ifelse(assetnamibia$HV246E %in% Sheep1to2, 1, 0 )
+assetnamibia$Sheep3to5  <-ifelse(assetnamibia$HV246E %in% Sheep3to5, 1, 0 )
+assetnamibia$Sheep6to10 <- ifelse(assetnamibia$HV246E  %in% Sheep6to10, 1, 0 )
+assetnamibia$Sheep11to20  <- ifelse(assetnamibia$HV246E %in% Sheep11to20, 1, 0 )
+assetnamibia$SheepGT20  <- ifelse(assetnamibia$HV246E %in% SheepGT20, 1, 0 )
+assetnamibia$SheepDK <- ifelse(assetnamibia$HV246E %in% SheepDK, 1, 0)
+
+# Chicken by number HV246F
+Chicken0 <-c("None")
+Chicken1to2 <- c("1", "2")
+Chicken3to5 <-c("3", "4", "5")
+Chicken6to10 <- c("6", "7", "8", "9", "10")
+Chicken11to20 <- c("11", "12", "13", "14", "15", "16", "17", "18" ,"19", "20")
+Chicken21to40 <- c("21", "22", " 23" , "24" ,"25" ,"26", "27" ,"28", "29",  "30" ,"31" ,"32" ,"33", "34", "35", "36", "37", "38", "39", "40")
+ChickenGT40 <- c("41", "42", "43", "44"," 45", "46", "47", "48", "49", "50", "51", '52', "53", "54", "55", "56", "57", "58" , "59", "60", "61"," 62", "63", "64"," 65", "66", "67",
+                 "68", "69" , "70", "71", "72", "73", "74", "75", "76", "77", "78",  "79", "80", "81", '82' , " 83", "84", "84", "85", "86", "87", "88", "89", "90", "91", "92", "93", "94", "95 or more")
+ChickenDK <- c("Unknown")
+
+assetnamibia$Chicken0  <-ifelse(assetnamibia$HV246F %in% Chicken0, 1, 0 )
+assetnamibia$Chicken1to2  <-ifelse(assetnamibia$HV246F %in% Chicken1to2, 1, 0 )
+assetnamibia$Chicken3to5  <-ifelse(assetnamibia$HV246F %in% Chicken3to5, 1, 0 )
+assetnamibia$Chicken6to10 <- ifelse(assetnamibia$HV246F  %in% Chicken6to10, 1, 0 )
+assetnamibia$Chicken11to20  <- ifelse(assetnamibia$HV246F %in% Chicken11to20, 1, 0 )
+assetnamibia$Chicken21to40  <- ifelse(assetnamibia$HV246F %in% Chicken21to40, 1, 0 )
+assetnamibia$ChickenGT40  <- ifelse(assetnamibia$HV246F %in% ChickenGT40, 1, 0 )
+assetnamibia$ChickenDK <- ifelse(assetnamibia$HV246F %in% ChickenDK, 1, 0)
+
+##Hectares by number
+assetnamibia$Hectares0 <- ifelse(assetnamibia$HV244 == "No", 1, 0)
+Hectares0to1 <- c("1", "2", "3" , "4" , "5", "6", "7", "8", "9", "10" )
+Hectares1to2 <- c("11", "12", "13" , "14" , "15", "16", "17", "18", "19")
+Hectares2to4 <- c("21", "22", "23" , "24" , "25", "26", "27", "28", "29", "31", "32", "33" , "34" , "35", "36", "37", "38", "39")
+Hectares4to8 <- c("41", "42", "43" , "44" , "45", "46", "47", "48", "49", "50", "51", '52', "53", "54", "55", "56", "57", "58" , "59", "60", "61"," 62", "63", "64"," 65", "66", "67",
+                  "68", "69" , "70", "71", "72", "73", "74", "75", "76", "77", "78",  "79")
+Hectares8to16 <- c("80", "81", '82' , " 83", "84", "84", "85", "86", "87", "88", "89", "90", "91", "92", "93", "94",
+                   "95", "96", "97", "98", "99", '100' ,'101' ,'102' ,'103' ,'104' ,'105' ,'106' ,'107' , '108', '109' ,'110' , '111' , '112' ,
+                   '113','114','115','116','117','118', '119', '120','121','122','123','124','125','126','127','128','129','130',
+                   '131','132','133','134','135','136','137','138','139', '140','141','142','143','144','145', '146','147','148',
+                   '149','150','151','152','153','154','155','156','157','158','159','160')
+
+
+HectaresGT16 <- c('161' ,'168' ,'170' ,'175' ,'177' , '180' ,'182' ,'184' ,'190' ,'200' ,'220' ,'230' ,'240' ,'245' ,'250', '252' ,
+                  '264' ,'280' ,'300' ,'310' ,'348' ,'350' ,'360' ,'364' ,'396' ,'400' ,'420' ,'450' ,'500' ,'600' ,'630' ,'678' ,'810' ,'900' , "95 or more")
+HectaresDK <- c("Unknown")
+
+assetnamibia$Hectares0to1  <-ifelse(assetnamibia$HV245 %in% Hectares0to1, 1, 0 )
+assetnamibia$Hectares1to2  <-ifelse(assetnamibia$HV245 %in% Hectares1to2, 1, 0 )
+assetnamibia$Hectares2to4 <- ifelse(assetnamibia$HV245  %in% Hectares2to4, 1, 0 )
+assetnamibia$Hectares4to8  <- ifelse(assetnamibia$HV245 %in% Hectares4to8, 1, 0 )
+assetnamibia$Hectares8to16  <- ifelse(assetnamibia$HV245 %in% Hectares8to16, 1, 0 )
+assetnamibia$HectaresGT16  <- ifelse(assetnamibia$HV245 %in% HectaresGT16, 1, 0 )
+assetnamibia$HectaresDK <- ifelse(assetnamibia$HV245 %in% HectaresDK, 1, 0)
+
+
+```
+
+
+
+##### MCA
+```{r mca, include = FALSE}
+##Drop original variables
+assetnamibia2 <- assetnamibia[ , !(names(assetnamibia) %in% namibiaavariables)]
+
+##Remove 0 variance columns (keep is.na within unique function otherwise it will include NAs in total length
+##And never find the cases where length actually = only 1
+findzerovar.new <- function(dat) {
+  out <- lapply(dat, function(x) length(unique(x[!is.na(x)])))
+  want <- which(!(out > 1))
+  unlist(want)
+}
+
+#assetnamibia3 <- assetnamibia2[ , !(names(assetnamibia) %in% names(findzerovar.new(assetnamibia2)))]
+assetnamibia3 <- assetnamibia2
+##Check
+namibia_sums <- data.frame(colSums(assetnamibia2, na.rm=TRUE))
+namibia_sums
+
+
+##Make factor
+#rm(ethiopia_assets_fac) # remove
+namibia_assets_fac1 <- data.frame(apply(assetnamibia3, 2, as.factor)) #
+namibia_assets_fac <- cbind(assetnamibia$hhweight, namibia_assets_fac1)
+namibia_assets_fac <- cbind(assetnamibia$MATCH, namibia_assets_fac)
+names(namibia_assets_fac)[names(namibia_assets_fac) == 'assetnamibia$hhweight'] <- 'hhweight' # rename
+names(namibia_assets_fac)[names(namibia_assets_fac) == 'assetnamibia$MATCH'] <- 'MATCH' # rename
+names(namibia_assets_fac)
+
+#Remove NAs so that there are no NAs in dimdesc and there is no NaNs error after MCA
+sapply(namibia_assets_fac, function(x) sum(is.na(x)))
+namibia_assets_fac <- namibia_assets_fac[complete.cases(namibia_assets_fac), ]
+sapply(namibia_assets_fac, function(x) sum(is.na(x)))
+
+#Run MCA
+#res <- MCA(namibia_assets_fac[,-1],row.w=namibia_assets_fac[,1])
+MCA_namibia <- MCA(namibia_assets_fac[,-(1:2), drop=FALSE], graph = FALSE, na.method=FALSE, row.w=namibia_assets_fac[,2])
+
+graphVar(MCA_namibia, Vselec="contrib 40", cex=0.55)
+
+png(filename="namibia_ind_dim.png")
+plot(MCA_namibia, invisible="var", choix="ind", label="none")
+dev.off()
+
+png(filename="namibia_var_dim.png")
+plot(MCA_namibia, invisible="ind", choix="var", cex=0.7, xlim=c(0, 0.65), ylim=c(0,0.4))
+dev.off()
+
+MCA_namibia$eig
+dimdesc(MCA_namibia, axes=1:2, proba = 0.25)
+MCA_namibia_results <- data.frame(MCA_namibia$ind$coord)
+MCA_namibia_results <- cbind(namibia_assets_fac$MATCH, MCA_namibia_results)
+names(MCA_namibia_results)[names(MCA_namibia_results) == 'namibia_assets_fac$MATCH'] <- 'MATCH' ##rename
+#Matches the wealth dimensions with the household data by the 'match' variable created at the beginning of the code
+hhnamibia_wealthdim <- merge(hhnamibia, MCA_namibia_results, by="MATCH")
+
+```
+
+
+##### Assess Wealth Dimensions against the DHS Wealth Index (HV271)
+```{r anchor, echo = TRUE}
+#################################
+### Anchor and Check Results ####
+#################################
+
+#### Here, we check our created dimension 1 against the pre-created DHS wealth index
+plot(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$HV271, xlab="Dim 1 Original", ylab="DHS Wealth Index")
+#reverse Dim 1
+hhnamibia_wealthdim$Dim.1 <- -1*hhnamibia_wealthdim$Dim.1
+plot(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$HV271, xlab="Dim 1", ylab="DHS Wealth Index")
+plot(hhnamibia_wealthdim$Dim.2, hhnamibia_wealthdim$HV271, xlab="Dim 2", ylab="DHS Wealth Index")
+
+```
+
+
+
+
+
+```{r create vars, echo = FALSE}
+######################################################
+## Creates Dichotomous Variables for Each Dimension ##
+######################################################
+
+#Dichotomous Variables Associated with Ag Econ
+hhnamibia_wealthdim$AnyCows  <- ifelse(hhnamibia_wealthdim$HV246A == "None", 0, 1)
+hhnamibia_wealthdim$AnyChickens <- ifelse(hhnamibia_wealthdim$HV246F == "None", 0, 1)
+hhnamibia_wealthdim$AnyLand<- ifelse(hhnamibia_wealthdim$HV244 == "Yes", 1, 0)
+hhnamibia_wealthdim$Electr <- ifelse(hhnamibia_wealthdim$HV206 == "Yes", 1, 0)
+#Place of Residence
+hhnamibia_wealthdim$Urban<- ifelse(hhnamibia_wealthdim$HV025 == "Urban", 1, 0)
+#Dichotomous Variables Associated with Cash Econ
+hhnamibia_wealthdim$BankAccount<- ifelse(hhnamibia_wealthdim$HV247 == "Yes", 1, 0)
+hhnamibia_wealthdim$Computer<- ifelse(hhnamibia_wealthdim$SH110G == "Yes", 1, 0)
+hhnamibia_wealthdim$TV<- ifelse(hhnamibia_wealthdim$HV208 == "Yes", 1, 0)
+
+qplot(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$Dim.2, main="Household Wealth in Namibia", xlab= "Cash Economy Achievement (Dim 1)", ylab="Agricultural Achievement (Dim 2)") + theme_minimal()
+
+
+```
+
+
+
+##### Assess means of key variables and dimensions 1 and 2 to affirm anchoring and examine differences in assets across the landscape of wealth in Namibia. 
+```{r means, include = TRUE}
+##### Assess Means of Key Variables & Dim 1/Dim 2 
+
+#### Cows
+hhnamibia_wealthdim %>%
+  group_by(AnyCows) %>%
+  summarize( meandim1=mean(Dim.1), meandim2=mean(Dim.2),nobs =length(AnyCows))
+
+#### Chickens
+hhnamibia_wealthdim %>%
+  group_by(AnyChickens) %>%
+  summarize( meandim1=mean(Dim.1), meandim2=mean(Dim.2),nobs =length(AnyChickens))
+
+#### Land
+hhnamibia_wealthdim %>%
+  group_by(AnyLand) %>%
+  summarize( meandim1=mean(Dim.1), meandim2=mean(Dim.2),nobs =length(AnyLand))
+
+#### Urban place of residence— this one is slightly unexpected, but does show that wealth and place of residence capture different aspects of socioeconomic position.
+hhnamibia_wealthdim %>%
+  group_by(Urban) %>%
+  summarize( meandim1=mean(Dim.1), meandim2=mean(Dim.2),nobs =length(Urban))
+
+#### Bank Account
+hhnamibia_wealthdim %>%
+  group_by(BankAccount) %>%
+  summarize( meandim1=mean(Dim.1), meandim2=mean(Dim.2),nobs =length(BankAccount))
+
+#### Computer
+hhnamibia_wealthdim %>%
+  group_by(Computer) %>%
+  summarize( meandim1=mean(Dim.1), meandim2=mean(Dim.2),nobs =length(Computer))
+
+#### TV
+hhnamibia_wealthdim %>%
+  group_by(TV) %>%
+  summarize( meandim1=mean(Dim.1), meandim2=mean(Dim.2),nobs =length(TV))
+
+```
+
+
+##### Expanding on assessment of means we will now assess correlations between dimensions and these variables. 
+```{r corrs, include = TRUE}
+###############################################################
+## Assess Correlations between Key Variables and Dim 1/Dim 2 ##
+###############################################################
+
+#### Dim 1, then Dim 2
+#### Land
+cor(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$AnyLand, method="pearson", use="pairwise.complete.obs")
+
+
+cor(hhnamibia_wealthdim$Dim.2, hhnamibia_wealthdim$AnyLand, method="pearson", use="pairwise.complete.obs")
+
+#### Cows 
+cor(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$AnyCows, method="pearson", use="pairwise.complete.obs")
+
+cor(hhnamibia_wealthdim$Dim.2, hhnamibia_wealthdim$AnyCows, method="pearson", use="pairwise.complete.obs")
+
+#### Chickens
+cor(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$AnyChickens, method="pearson", use="pairwise.complete.obs")
+cor(hhnamibia_wealthdim$Dim.2, hhnamibia_wealthdim$AnyChickens, method="pearson", use="pairwise.complete.obs")
+
+#### Urban
+cor(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$Urban, method="pearson", use="pairwise.complete.obs")
+cor(hhnamibia_wealthdim$Dim.2, hhnamibia_wealthdim$Urban, method="pearson", use="pairwise.complete.obs")
+
+#### Bank Account
+cor(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$BankAccount, method="pearson", use="pairwise.complete.obs")
+cor(hhnamibia_wealthdim$Dim.2, hhnamibia_wealthdim$BankAccount, method="pearson", use="pairwise.complete.obs")
+
+#### Computer
+cor(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$Computer, method="pearson", use="pairwise.complete.obs")
+
+cor(hhnamibia_wealthdim$Dim.2, hhnamibia_wealthdim$Computer, method="pearson", use="pairwise.complete.obs")
+
+#### TV
+cor(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$TV, method="pearson", use="pairwise.complete.obs")
+
+
+cor(hhnamibia_wealthdim$Dim.2, hhnamibia_wealthdim$TV, method="pearson", use="pairwise.complete.obs")
+
+
+```
+
+
+
+
+##### Merge and clean data- note that, among those who report days of low energy and little energy, peak around 1 week (cognitive ease of 1 week?). Distributions are relatively similar across the sexes.
+```{r mh vars, echo = TRUE}
+###########################
+### Merge into womens file ####
+###########################
+
+vars_to_keep_households <- c("HV000", "HV001", "HV002", "Dim.1", "Dim.2", "HV271")
+hh_wealth <- hhnamibia_wealthdim[vars_to_keep_households]
+
+
+
+
+# Mental health variables are as follows: S1010S = Times you see or hear things, S1010T = Felt worthless, S1010U = Felt little interest, S1010V = Felt low energy/sad
+# For two of the variables there are also number of days variables: S1010UN = # of days felt little interest in past two weeks, S1010VN = # of days felt low energy/sad in past two weeks
+
+
+# Explore the mental health variables for women
+womennamibia %>% count(S1010S) #See or hear things
+womennamibia %>% count(S1010T) # felt worthless
+womennamibia %>% count(S1010U) #felt little interest
+womennamibia %>% count(S1010UN) # of days felt little interest
+# Plot distribution
+#### Density plot/histogram # of Days Little Interest
+womennamibia %>%
+  ggplot(aes(x=S1010UN)) +
+  geom_histogram(aes(y=..density..), fill = "lightblue") +
+  geom_density(alpha = .2) +
+  geom_vline(aes(xintercept=mean(S1010UN, na.rm = T)),
+             color="black") +
+  xlab("Number of Days of Little Interest") + ggtitle("Women") +
+  theme_minimal()
+
+
+womennamibia %>% count(S1010V) #felt low energy & sad
+womennamibia %>% count(S1010VN) # of days felt low energy/")
+
+#### Density plot/histogram # of Days Low Energy
+womennamibia %>%
+  ggplot(aes(x=S1010VN)) +
+  geom_histogram(aes(y=..density..), fill = "lightblue") +
+  geom_density(alpha = .2) +
+  geom_vline(aes(xintercept=mean(S1010VN, na.rm = T)),
+             color="black") +
+  xlab("Number of Days of Low Energy") + ggtitle("Women") +
+  theme_minimal()
+
+table(womennamibia$S1010U, womennamibia$S1010UN)
+
+#explore mental health for men SM813Q", "SM813R", "SM813S", "SM813SN",  "SM813T", "SM813TN"
+
+#namibia_all_men
+mennamibia %>%  count(SM813Q) #See or hear things
+mennamibia %>%  count(SM813R)  #felt worthless
+mennamibia %>%  count(SM813S) #felt little interest
+mennamibia %>%  count(SM813SN) # of days felt little interest
+mennamibia %>%  count(SM813T)  #felt low energy & sad
+mennamibia %>%  count(SM813TN) ## of days felt low energy/")
+
+#### Density plots for men to compare
+mennamibia %>%
+  ggplot(aes(x=SM813SN)) +
+  geom_histogram(aes(y=..density..), fill = "orange") +
+  geom_density(alpha = .2) +
+  geom_vline(aes(xintercept=mean(SM813SN, na.rm = T)),
+             color="black") +
+  xlab("Number of Days of Little Interest") + ggtitle("Men") +
+  theme_minimal()
+
+
+mennamibia %>%
+  ggplot(aes(x=SM813TN)) +
+  geom_histogram(aes(y=..density..), fill = "orange") +
+  geom_density(alpha = .2) +
+  geom_vline(aes(xintercept=mean(SM813TN, na.rm = T)),
+             color="black") +
+  xlab("Number of Days of Low Energy") + ggtitle("Men") +
+  theme_minimal()
+```
+
+
+```{r prep for merge, include = FALSE}
+# Rename mens and womens varables and prep to merge
+# Women rename
+namibia_women <- womennamibia %>%
+  mutate(gender = "female",
+        # V025 = V025,
+         #V022 = as.factor(V022),
+         #V106 = as.factor(V106),
+        # S1010S = as.numeric(S1010S),
+        # S1010T = as.numeric(S1010T),
+        # S1010U = as.numeric(S1010U),
+        # S1010V = as.numeric(S1010V)
+        V744Arc = ifelse(V744A == "No", 0, 1),
+        V744Brc =ifelse(V744B == "No", 0, 1),
+        V744Crc =ifelse(V744C == "No", 0, 1),
+        V744Drc =ifelse(V744D == "No", 0, 1),
+        abuse = V744Arc + V744Brc + V744Crc + V744Drc,
+       
+         ) %>%
+  rename(see_or_hear = (S1010S),
+         felt_worthless = S1010T,
+         little_interst = S1010U,
+         lowenergy_sad = S1010V,
+         days_litte_interest = S1010UN,
+         days_low_energy = S1010VN
+         
+         ) %>%
+  dplyr::select( V000 ,  V001 ,  V002 , V005  ,  V012 ,  V025 ,V021  ,  V022 ,  V106 , V191  ,  
+             gender ,  see_or_hear ,  felt_worthless ,  little_interst ,  lowenergy_sad ,
+          days_litte_interest ,  days_low_energy, V744A:V744E, abuse)
+ 
+
+namibia_women %>% count(abuse) #V744A
+
+
+
+
+
+namibia_men <- mennamibia %>%
+  mutate(gender = "male",
+         #SM813Q = ifelse(as.double(SM813Q) == 1, 0, ifelse(as.double(SM813Q) == 2, 1, NA)),
+         #SM813R =  ifelse(as.double(SM813R) == 1, 0, ifelse(as.double(SM813R) == 2, 1, NA)),
+         #SM813S =  ifelse(as.double(SM813S) == 1, 0, ifelse(as.double(SM813S) == 2, 1, NA)),
+         #SM813T =  ifelse(as.double(SM813T) == 1, 0, ifelse(as.double(SM813T) == 2, 1, NA)),
+         #SM813SN =  as.double(SM813SN),
+         #SM813TN =  as.double(SM813TN),
+         V744Arc = ifelse(MV744A == "No", 0, 1),
+         V744Brc =ifelse(MV744B == "No", 0, 1),
+         V744Crc =ifelse(MV744C == "No", 0, 1),
+         V744Drc =ifelse(MV744D == "No", 0, 1),
+         abuse = V744Arc + V744Brc + V744Crc + V744Drc,
+         
+         ) %>%
+  rename(see_or_hear = SM813Q,
+         felt_worthless =  SM813R,
+         little_interst =  SM813S,
+         lowenergy_sad =  SM813T,
+         days_litte_interest =  SM813SN,
+         days_low_energy = SM813TN,
+         V000 = MV000,
+         V001 = MV001,
+         V002 = MV002,
+         V005 = MV005,
+         V012 = MV012,
+         V025 = MV025,
+         V021 = MV021,
+         V022 = MV022,
+         V106 = MV106,
+         V191 = MV191,
+         V744A = MV744A,
+         V744B = MV744B,
+         V744C = MV744C,
+         V744D = MV744D,
+         V744E = MV744E,
+         ) %>%
+  dplyr::select( V000 ,  V001 ,  V002 , V005  ,  V012 ,  V025 ,V021  ,  V022 ,  V106 , V191  ,  
+          gender ,  see_or_hear ,  felt_worthless ,  little_interst ,  lowenergy_sad ,
+          days_litte_interest ,  days_low_energy,V744A:V744E, abuse )
+
+
+
+#str(namibia_men)
+#str(namibia_women)
+
+#Bind men and women
+namibia_men_women <- bind_rows(namibia_women, namibia_men)
+
+
+# Check abuse variables
+namibia_men_women %>%
+  group_by(gender) %>%
+  summarize(abuse_mean = mean(abuse, na.rm = T))
+
+
+```
+
+
+#### Note: women, on average, report higher frequency of days of low energy and little interest than men. Those in urban areas report higher frequency of days of low energy and little interest, on average, than those in rural areas. When grouped by both strata (sex/gender) and place of residence, women in urban areas report the highest frequency days, followed by women in rural areas, men in rural areas, and men in urban areas. In other words, there are interesting interactions between gender and place of residence on a descriptive level.
+```{r mh var creation, echo = TRUE}
+#### Merge data—create new mental health variables that account for reported frequencies
+
+namibia_men_women <- namibia_men_women %>%
+  mutate(nointerest_days = ifelse(little_interst == "No", 0, days_litte_interest),
+         lowenergy_days = ifelse(lowenergy_sad == "No", 0, days_low_energy)
+         )
+
+namibia_men_women %>% head()
+
+#### Group by gender
+namibia_men_women %>%
+#  filter(felt_worthless != 3) %>%
+  group_by(gender) %>%
+  summarise(mean_lowenergy = mean(lowenergy_days, na.rm = T),
+            mean_nointerest_days = mean(nointerest_days, na.rm = T),
+            n_obs = length(lowenergy_days))
+
+#### Group by urban/rural
+namibia_men_women %>%
+  #  filter(felt_worthless != 3) %>%
+  group_by(V025) %>%
+  summarise(mean_lowenergy = mean(lowenergy_days, na.rm = T),
+            mean_nointerest_days = mean(nointerest_days, na.rm = T),
+            n_obs = length(lowenergy_days))
+
+#### Group by both 
+namibia_men_women %>%
+  group_by(gender, V025) %>%
+  summarise(mean_lowenergy = mean(lowenergy_days, na.rm = T),
+            mean_nointerest_days = mean(nointerest_days, na.rm = T),
+            n_obs = length(lowenergy_days))
+
+# Look at women's violence attitudes
+namibia_women %>% count(V744A)
+
+
+namibia_men_women %>%
+  group_by(gender) %>%
+  count(V025)
+
+namibia_men_women %>%
+  group_by(gender) %>%
+  count(little_interst)
+
+namibia_men_women %>%
+  group_by(gender) %>%
+  count(lowenergy_sad)
+
+namibia_men_women %>%
+  group_by(gender) %>%
+  count(felt_worthless)
+
+```
+
+
+
+```{r merge with wealth, echo = TRUE}
+# merge namibia_men_women into hhwealth
+
+namibia_hh_men_woman <- merge(namibia_men_women,hh_wealth, by.x =c("V000", "V001", "V002"), by.y = c("HV000", "HV001", "HV002"))
+
+namibia_hh_men_woman %>%
+  group_by(gender) %>%
+  count(felt_worthless)
+
+#check results match
+namibia_hh_men_woman %>%
+  #  filter(felt_worthless != 3) %>%
+  group_by(gender) %>%
+  summarise(mean_lowenergy = mean(lowenergy_days, na.rm = T),
+            mean_nointerest_days = mean(nointerest_days, na.rm = T),
+            n_obs = length(lowenergy_days))
+
+namibia_hh_men_woman %>%
+  #  filter(felt_worthless != 3) %>%
+  group_by(V025) %>%
+  summarise(mean_lowenergy = mean(lowenergy_days, na.rm = T),
+            mean_nointerest_days = mean(nointerest_days, na.rm = T),
+            n_obs = length(lowenergy_days))
+
+
+namibia_hh_men_woman %>%
+   filter(!is.na(lowenergy_days) & !is.na(nointerest_days)) %>%
+  group_by(gender) %>%
+  summarise(mean_lowenergy = mean(lowenergy_days),
+            mean_nointerest_days = mean(nointerest_days),
+            n_obs = length(lowenergy_days))
+
+#filter(!is.na(worthless))
+
+namibia_hh_men_woman %>%
+  filter(!is.na(lowenergy_days) & !is.na(nointerest_days)) %>%
+  group_by(V025) %>%
+  summarize(counts = sum(lowenergy_days), n = length(lowenergy_days))
+
+namibia_hh_men_woman %>%
+  group_by(gender) %>%
+  summarize(mean = mean(days_low_energy, na.rm = T),
+            n = length(days_low_energy))
+
+namibia_hh_men_woman %>%
+  #filter(lowenergy_days != 0) %>%
+  group_by(gender, V025) %>%
+  summarise(mean_lowenergy = mean(lowenergy_days, na.rm = T),
+            mean_nointerest_days = mean(nointerest_days, na.rm = T),
+            n_obs = length(lowenergy_days))
+
+
+namibia_hh_men_woman %>%
+  #  filter(felt_worthless != 3) %>%
+  group_by(gender) %>%
+  summarise(mean_lowenergy = mean(lowenergy_days, na.rm = T),
+            mean_nointerest_days = mean(nointerest_days, na.rm = T),
+            n_obs = length(lowenergy_days))
+
+# Three key variables felt_worthless, lowenergy_days, nointerest_days
+
+```
+
+
+
+```{r dem tab}
+# Demographic Table 1
+library(table1)
+dem_tab <- 
+  table1(~gender + V012 + V106 + abuse + Dim.1 + Dim.2 + felt_worthless + nointerest_days + lowenergy_days | V025, data = namibia_hh_men_woman)
+dem_tab
+
+
+mh_tab <- table1(~ felt_worthless + nointerest_days + lowenergy_days + little_interst + lowenergy_sad | V025, data = namibia_men_women)
+mh_tab
+  
+
+
+# felt_worthless ~ gender + V012 + V025 + V106 +  gender + Dim.1 + Dim.2 + gender*abuse
+# Comparing feelings of worthless by place
+chisq.test(namibia_hh_men_woman$felt_worthless, namibia_hh_men_woman$V025, correct=FALSE)
+
+# Number of days no interest
+t.test(namibia_hh_men_woman$nointerest_days ~ namibia_hh_men_woman$V025, var.equal = TRUE)
+
+
+# Number of days low energy
+t.test(namibia_hh_men_woman$lowenergy_days ~ namibia_hh_men_woman$V025, var.equal = TRUE)
+
+```
+
+
+
+```{r days for endorsers only}
+namibia_hh_men_woman %>%
+  group_by(little_interst) %>%
+  summarise_at(vars(nointerest_days), list(mean = mean), na.rm=T)
+
+namibia_hh_men_woman %>%
+  group_by(little_interst) %>%
+  summarise_at(vars(nointerest_days), list(sd = sd), na.rm=T)
+
+
+namibia_hh_men_woman %>%
+  group_by(lowenergy_sad) %>%
+  summarise_at(vars(lowenergy_days), list(mean = mean), na.rm=T)
+
+namibia_hh_men_woman %>%
+  group_by(lowenergy_sad) %>%
+  summarise_at(vars(lowenergy_days), list(sd = sd), na.rm=T)
+
+
+
+```
+
+
+
+```{r visuals, echo = TRUE}
+ggplot(namibia_hh_men_woman, aes(x = Dim.1, y = Dim.2, col = gender)) + 
+  geom_point(alpha = 0.5) + 
+  scale_color_brewer(palette = "Dark2") +
+  xlab("Cash Economy Assets") +
+  ylab("Agricultural Economy Assets") +
+  theme_minimal() 
+
+ggplot(namibia_hh_men_woman, aes(x = Dim.1, y = Dim.2, col = V025)) + 
+  geom_point(alpha = 0.5) + 
+  xlab("Cash Economy Assets") +
+  ylab("Agricultural Economy Assets") +
+  scale_colour_manual(values = c("#00BFC4", "#F8766D")) + 
+  theme_classic() +
+    geom_smooth(method=lm) #add linear trend line
+
+ggsave("Wealth Dims by Place.png")
+
+p1 <- 
+  ggplot(namibia_hh_men_woman, aes(x = lowenergy_sad, y = Dim.1, fill = gender)) +  
+  geom_violin(trim = FALSE) + 
+  theme_minimal() + 
+    scale_fill_brewer(palette = "Dark2") + 
+  xlab("Low Energy or Sad") + ylab("Cash Economy Wealth")
+
+p1 + stat_summary(fun.y=mean, geom="point", shape=23, size=2)
+
+
+p2 <- 
+  ggplot(namibia_hh_men_woman, aes(x = lowenergy_sad, y = Dim.2, fill = gender)) +  
+  geom_violin(trim = FALSE) + 
+  theme_minimal() + 
+    scale_fill_brewer(palette = "Dark2") + 
+  xlab("Low Energy or Sad") + ylab("Ag Economy Wealth")
+
+p2 + stat_summary(fun.y=mean, geom="point", shape=23, size=2)
+
+
+ggplot(namibia_hh_men_woman, aes(x = lowenergy_sad, fill = V025)) +
+    geom_bar(position = "fill") + 
+    scale_fill_brewer(palette = "Dark2") + 
+  xlab("Low Energy or Sad") +
+  theme_minimal()
+
+
+ggplot(namibia_hh_men_woman, aes(x = felt_worthless, fill = V025)) +
+    geom_bar(position = "fill") + 
+    scale_fill_brewer(palette = "Dark2") + 
+  xlab("Feelings of Worthlessness") +
+  theme_minimal()
+
+ggplot(namibia_hh_men_woman, aes(x = little_interst, fill = V025)) +
+    geom_bar(position = "fill") + 
+    scale_fill_brewer(palette = "Dark2") + 
+  xlab("Lack of Interest") +
+  theme_minimal()
+
+```
+
+##### Analysis approaches to consider: Poisson regression can be used for count data (for instance, count of days of little interest or low energy, which we model here). However, if those data are overdispersed (conditional variance exceeds conditional mean), negative binomial regression may be more appropriate. Regardless of approach, wealth dimensions exhibit similar effects on days of little interest, with greater wealth in either dimensions associated with fewer days reported; however, the magnitude of effect is relatively greater of Dim2. As may be expected given this effect, rural residence is also associated with fewer days reported. Education is positively associated with days of no interest, with each successive education category associated with more days reported. The variable with the highest magnitude of effect in the model is sex. Sex-differentiation is also evident when considering low energy; however, the other effects are more mixed. In that model, Dim 1 and Dim2 differ in direction of effect, as they do with feeling worthless.
+```{r fit models, echo = TRUE}
+#### Fit models
+# install.packages("tidymodels")
+# install.packages("poissonreg")
+
+library(tidymodels)
+library(poissonreg)
+
+#### Model for feeling worthless
+
+# Note: V012 = current age
+log_spec <- logistic_reg() %>%
+  set_engine("glm") %>%
+  set_mode("classification") %>%
+  fit(felt_worthless ~ gender + V012 + V025 + V106 +  gender + Dim.1 + Dim.2 + gender*abuse , data = namibia_hh_men_woman)
+
+#log linear first
+log_lin_spec<-poisson_reg()
+
+log_spec
+class(log_spec)
+
+tidy(log_spec)
+
+library(sjPlot)
+tab_model(log_spec)
+
+
+
+namibia_hh_men_woman %>%
+  ggplot(aes(x=nointerest_days)) + geom_histogram()
+
+
+namibia_hh_men_woman %>%
+  ggplot(aes(x=lowenergy_days)) + geom_histogram()
+
+
+# Note: V012 = current age
+#### Feelings of Worthlessness
+log_spec_interact <- logistic_reg() %>%
+  set_engine("glm") %>%
+  set_mode("classification") %>%
+  fit(felt_worthless ~ gender + V012 + V025 + V106 +  gender + Dim.1 + Dim.2 + gender*abuse + gender*Dim.1 + gender*Dim.2, data = namibia_hh_men_woman)
+
+tidy(log_spec_interact)
+
+tab_model(log_spec_interact)
+
+#### Feelings of worthlessness with interactions
+log_spec_interact2 <- logistic_reg() %>%
+  set_engine("glm") %>%
+  set_mode("classification") %>%
+  fit(felt_worthless ~ gender + V012 + V025 + V106 +  gender + Dim.1 + Dim.2 + gender*abuse +  gender*V025, data = namibia_hh_men_woman)
+
+tidy(log_spec_interact2)
+
+tab_model(log_spec, log_spec_interact, log_spec_interact2, dv.labels = c("Worthlessness1", "Worthlessness2", "Worthlessness3"))
+
+
+
+#### No interest - poisson
+log_lin_fit_nointerest <-
+  log_lin_spec %>%
+  fit(nointerest_days ~ gender + V012 + V025 + V106 +  gender + Dim.1 + Dim.2 + gender*abuse, data = namibia_hh_men_woman)
+log_lin_fit_nointerest
+log_lin_fit_nointerest %>% tidy()
+tidy(log_lin_fit_nointerest, conf.int = T, conf.level = .9)
+
+
+#### No interest with interactions
+log_lin_fit_nointerest_interact <-
+  log_lin_spec %>%
+  fit(nointerest_days ~ gender + V012 + V025 + V106 +  gender + Dim.1 + Dim.2 + gender*abuse + gender*Dim.1 + gender*Dim.2, data = namibia_hh_men_woman)
+
+tidy(log_lin_fit_nointerest_interact, conf.int = T, conf.level = .9)
+
+
+log_lin_fit_nointerest_interact2 <-
+  log_lin_spec %>%
+  fit(nointerest_days ~ gender + V012 + V025 + V106 +  gender + Dim.1 + Dim.2 + gender*abuse + gender*V025, data = namibia_hh_men_woman)
+
+tidy(log_lin_fit_nointerest_interact2, conf.int = T, conf.level = .9)
+
+tab_model(log_lin_fit_nointerest, log_lin_fit_nointerest_interact, log_lin_fit_nointerest_interact2, dv.labels = c("Low Interest1", "LowInterest2", "LowInterest3"))
+
+##### Low energy- poisson
+log_lin_fit_lowenergy <-
+  log_lin_spec %>%
+  fit(lowenergy_days ~ gender + V012 + V025 + V106 +  gender + Dim.1 + Dim.2  + gender*abuse, data = namibia_hh_men_woman)
+log_lin_fit_lowenergy
+
+log_lin_fit_lowenergy %>% tidy()
+tidy(log_lin_fit_lowenergy, conf.int = T, conf.level = .9)
+
+
+#### Low energy interaction effects
+log_lin_fit_lowenergy_interact <-
+  log_lin_spec %>%
+  fit(lowenergy_days ~ gender + V012 + V025 + V106 +  gender + Dim.1 + Dim.2  + gender*abuse + gender*Dim.1 + gender*Dim.2, data = namibia_hh_men_woman)
+log_lin_fit_lowenergy_interact
+
+log_lin_fit_lowenergy_interact2 <-
+  log_lin_spec %>%
+  fit(lowenergy_days ~ gender + V012 + V025 + V106 +  gender + Dim.1 + Dim.2  + gender*abuse + gender*V025, data = namibia_hh_men_woman)
+log_lin_fit_lowenergy_interact2
+
+tab_model(log_lin_fit_lowenergy, log_lin_fit_lowenergy_interact, log_lin_fit_lowenergy_interact2, dv.labels = c("Low Energy1", "LowEnergy2", "LowEnergy3"))
+
+
+# Negative binomial
+library(MASS)
+summary(m1 <- glm.nb(nointerest_days ~ gender + V012 + V025 + V106 +  gender*abuse + Dim.1 + Dim.2 , data = namibia_hh_men_woman))
+summary(m2 <- glm.nb(lowenergy_days ~ gender + V012 + V025 + V106 +  gender*abuse + Dim.1 + Dim.2 , data = namibia_hh_men_woman))
+
+
+summary(m3 <- glm.nb(lowenergy_days ~  V012 + V025 + V106 + abuse + Dim.1 + Dim.2 , data = namibia_hh_men_woman, subset = gender == "female"))
+summary(m4 <- glm.nb(lowenergy_days ~  V012 + V025 + V106 + abuse + Dim.1 + Dim.2 , data = namibia_hh_men_woman, subset = gender == "male"))
+
+tab_model(m3, m4)
+
+tab_model(m1)
+tab_model(m2)
+
+mean(namibia_hh_men_woman$nointerest_days, na.rm = T)
+var(namibia_hh_men_woman$nointerest_days, na.rm = T)
+sd(namibia_hh_men_woman$nointerest_days, na.rm = T)
+
+
+mean(namibia_hh_men_woman$lowenergy_days, na.rm = T)
+var(namibia_hh_men_woman$lowenergy_days, na.rm = T)
+
+```
+
+
+
+
+#### Couples Data from DHS
+```{r couples, eval=FALSE, include=FALSE}
+couplesnamibia<- read.spss("NMCR61FL.SAV", to.data.frame=TRUE, use.value.labels=TRUE)
+
+# Assess column names
+couplesnamibia %>% colnames()
+couplesnamibia %>% count(S1010T)  #felt worthless wife
+couplesnamibia %>% count(SM813R)  #felt worthless wife
+
+
+namibia_hh_couples <- merge(couplesnamibia,hh_wealth, by.x =c("V000", "V001", "V002"), by.y = c("HV000", "HV001", "HV002"))
+
+
+# Recode
+namib_couples <- namibia_hh_couples %>%
+  mutate(V744Arc = ifelse(V744A == "No", 0, ifelse(V744A == "Don't know", .5, 1)),
+         V744Brc =ifelse(V744B == "No", 0, ifelse(V744B == "Don't know", .5, 1)),
+         V744Crc =ifelse(V744C == "No", 0, ifelse(V744C == "Don't know", .5, 1)),
+         V744Drc =ifelse(V744D == "No", 0, ifelse(V744D == "Don't know", .5, 1)),
+         wife_abuse = V744Arc + V744Brc + V744Crc + V744Drc,
+         wife_any_abuse = ifelse(wife_abuse == 0, 0, 1),
+         
+         MV744Arc = ifelse(MV744A == "No", 0,ifelse(MV744A == "Don't know", .5, 1)),
+         MV744Brc =ifelse(MV744B == "No", 0,ifelse(MV744A == "Don't know", .5, 1)),
+         MV744Crc =ifelse(MV744C == "No", 0, ifelse(MV744A == "Don't know", .5, 1)),
+         MV744Drc =ifelse(MV744D == "No", 0, ifelse(MV744A == "Don't know", .5, 1)),
+         hub_abuse = MV744Arc + MV744Brc + MV744Crc + MV744Drc,
+         hub_any_abuse = ifelse(hub_abuse == 0, 0, 1),
+         
+         hub_wife_discord = ifelse(hub_any_abuse ==  0 & wife_any_abuse == 0, "low-low",
+                                   ifelse(hub_any_abuse ==  1 & wife_any_abuse == 1, "high-high",
+                                          ifelse(hub_any_abuse ==  1 & wife_any_abuse == 0, "high-low",
+                                                 ifelse(hub_any_abuse ==  0 & wife_any_abuse == 1, "low-high", NA)))),
+                                   
+         
+         
+         discord  = wife_abuse - hub_abuse,
+         any_discord = wife_any_abuse - hub_any_abuse,
+         Hub_more_abuse = ifelse(wife_any_abuse< hub_any_abuse, 1, 0)
+         
+  ) %>%
+  rename(wife_see_or_hear = (S1010S),
+         wife_felt_worthless = S1010T,
+         wife_little_interst = S1010U,
+         wife_lowenergy_sad = S1010V,
+         wife_days_litte_interest = S1010UN,
+         wife_days_low_energy = S1010VN,
+         
+         hub_felt_worthless =  SM813R,
+         hub_little_interst =  SM813S,
+         hub_lowenergy_sad =  SM813T,
+         hub_days_litte_interest =  SM813SN,
+         hub_days_low_energy = SM813TN )
+#%>%
+#  select( V000 ,  V001 ,  V002 , V005  ,  V012 ,  V025 ,V021  ,  V022 ,  V106 , V191  ,  
+#          gender ,  see_or_hear ,  felt_worthless ,  little_interst ,  lowenergy_sad ,
+#          days_litte_interest ,  days_low_energy, V744A:V744E, abuse)
+namib_couples %>% count(felt_worthless)
+
+namib_couples <- namib_couples %>%
+  mutate(hub_nointerest_days = ifelse(hub_little_interest %in% c("No", "Dont know/not sure"), 0, hub_days_litte_interest),
+         hub_lowenergy_days = ifelse(hub_lowenergy_sad %in% c("No", "Dont know/not sure"), 0, hub_days_low_energy),
+         
+          wife_nointerest_days = ifelse(wife_little_interest %in% c("No", "Dont know/not sure"), 0, wife_days_litte_interest),
+          wife_lowenergy_days = ifelse(wife_lowenergy_sad  %in% c("No", "Dont know/not sure"), 0, wife_days_low_energy),
+  )
+
+namib_couples %>%
+  filter(wife_felt_worthless != "NA") %>%
+  group_by(Hub_more_abuse) %>%
+  summarize(meandiscord =mean(discord, na.rm =T),
+            mean_anydiscord = mean(any_discord, na.rm =T ))
+
+model_data <- namib_couples %>%
+  filter(wife_lowenergy_sad %in% c("No", "Yes"))
+
+
+lm_wife<- logistic_reg() %>%
+  # Set the engine
+  set_engine("glm") %>%
+  # Set the mode
+  set_mode("classification") %>%
+  # Fit the model
+  fit(wife_felt_worthless~ V025 + V012 + V106  + hub_wife_discord +  Dim.1 + Dim.2, data = model_data)
+
+tidy(lm_wife)
+
+
+lm_hub <- logistic_reg() %>%
+  # Set the engine
+  set_engine("glm") %>%
+  # Set the mode
+  set_mode("classification") %>%
+  # Fit the model
+  fit(hub_felt_worthless~ V025 + MV012 + MV106  + hub_wife_discord +  Dim.1 + Dim.2, data = model_data)
+
+tidy(lm_hub)
+
+
+tab_model(lm_wife, lm_hub)
+
+fitted_logistic_model<- logistic_reg() %>%
+  # Set the engine
+  set_engine("glm") %>%
+  # Set the mode
+  set_mode("classification") %>%
+  # Fit the model
+  fit(wife_lowenergy_sad~ V025 + V012 + V106  + hub_wife_discord +  Dim.1 + Dim.2, data = model_data)
+
+tidy(fitted_logistic_model)  # Generate Summary Table
+
+
+
+fitted_logistic_model2<- logistic_reg() %>%
+  # Set the engine
+  set_engine("glm") %>%
+  # Set the mode
+  set_mode("classification") %>%
+  # Fit the model
+  fit(hub_lowenergy_sad~ V025 + MV012 + MV106  + hub_wife_discord +  Dim.1 + Dim.2, data = model_data)
+
+tidy(fitted_logistic_model2)  
+
+
+tab_model(fitted_logistic_model, fitted_logistic_model2)
+
+
+
+# Little Interest
+lm_hub_interest <- logistic_reg() %>%
+  # Set the engine
+  set_engine("glm") %>%
+  # Set the mode
+  set_mode("classification") %>%
+  # Fit the model
+  fit(hub_little_interst~ V025 + MV012 + MV106  + hub_wife_discord +  Dim.1 + Dim.2, data = model_data)
+
+lm_wife_interest <- logistic_reg() %>%
+  # Set the engine
+  set_engine("glm") %>%
+  # Set the mode
+  set_mode("classification") %>%
+  # Fit the model
+  fit(wife_little_interst~ V025 + V012 + V106  + hub_wife_discord +  Dim.1 + Dim.2, data = model_data)
+
+
+tab_model(lm_wife_interest, lm_hub_interest)
+
+#Days
+library(MASS)
+summary(m1 <- glm.nb(hub_nointerest_days ~ MV012 + V025 + MV106  + hub_wife_discord + Dim.1 + Dim.2 ,data = namib_couples))
+summary(m2 <- glm.nb(hub_lowenergy_days ~  MV012 + V025 + MV106  + hub_wife_discord  + Dim.1 + Dim.2 ,data = namib_couples))
+#anova(m1, m2)
+#(est <- cbind(Estimate = coef(m1), confint(m1)))
+#exp(est)
+
+
+summary(m3 <- glm.nb(wife_nointerest_days ~ V012 + V025 + V106  + hub_wife_discord + Dim.1 + Dim.2 ,data = namib_couples))
+summary(m4 <- glm.nb(wife_lowenergy_days ~  V012 + V025 + V106  + hub_wife_discord  + Dim.1 + Dim.2 ,data = namib_couples))
+```
