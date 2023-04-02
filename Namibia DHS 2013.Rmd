@@ -77,13 +77,8 @@ hhnamibia$MATCH <- 1:nrow(hhnamibia)
 
 
 ```{r create wealth dimensions, include = FALSE}
-#############################################
-## Create Wealth Dimensions From HH Assets ##
-#############################################
-
-####################################
-#############  Namibia  #############
-####################################
+#### Create wealth dimensions from assets
+#### Assets in Namibia data
 namibiaavariables <- c("MATCH", "hhweight", 'HV201','HV205','HV206',  'HV207', 'HV208', 'HV209', 'HV210', 'HV211',
                        'HV212', 'HV213',   'HV214',   'HV215',   'HV221', 'HV226',
                        'HV243A', 'HV243B', 'HV243C', 'HV243D', 'HV244',  'HV245', 'HV246', 'HV246A',
@@ -93,10 +88,7 @@ namibiaavariables <- c("MATCH", "hhweight", 'HV201','HV205','HV206',  'HV207', '
 # 'HV247'
 assetnamibia <- hhnamibia[namibiaavariables]
 
-##############################################
-## Grouping of Building Materials and Goods ##
-##############################################
-
+#### Building Materials & Goods
 ##HV201
 assetnamibia$PipedDwelling <- assetnamibia$HV201
 assetnamibia$PipedDwelling <- ifelse(assetnamibia$PipedDwelling=="Piped into dwelling", 1, 0)
@@ -459,10 +451,7 @@ assetnamibia$Table <- ifelse(assetnamibia$Table=="Yes", 1, 0)
 assetnamibia$Windows <- assetnamibia$SH110O
 assetnamibia$Windows <- ifelse(assetnamibia$Windows=="Yes", 1, 0)
 
-####################################
-## Grouping of Livestock and Land ##
-####################################
-
+#### Grouping of Livestock and Land
 #Cattle by number
 Cattle0 <- c("None")
 Cattle1to2 <- c("1", "2")
@@ -676,10 +665,7 @@ hhnamibia_wealthdim <- merge(hhnamibia, MCA_namibia_results, by="MATCH")
 
 ##### Assess Wealth Dimensions against the DHS Wealth Index (HV271)
 ```{r anchor, echo = TRUE}
-#################################
-### Anchor and Check Results ####
-#################################
-
+#### Anchor and Check Results
 #### Here, we check our created dimension 1 against the pre-created DHS wealth index
 plot(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$HV271, xlab="Dim 1 Original", ylab="DHS Wealth Index")
 #reverse Dim 1
@@ -694,10 +680,7 @@ plot(hhnamibia_wealthdim$Dim.2, hhnamibia_wealthdim$HV271, xlab="Dim 2", ylab="D
 
 
 ```{r create vars, echo = FALSE}
-######################################################
-## Creates Dichotomous Variables for Each Dimension ##
-######################################################
-
+#### Create dichotomous variables for each dimension
 #Dichotomous Variables Associated with Ag Econ
 hhnamibia_wealthdim$AnyCows  <- ifelse(hhnamibia_wealthdim$HV246A == "None", 0, 1)
 hhnamibia_wealthdim$AnyChickens <- ifelse(hhnamibia_wealthdim$HV246F == "None", 0, 1)
@@ -761,10 +744,7 @@ hhnamibia_wealthdim %>%
 
 ##### Expanding on assessment of means we will now assess correlations between dimensions and these variables. 
 ```{r corrs, include = TRUE}
-###############################################################
-## Assess Correlations between Key Variables and Dim 1/Dim 2 ##
-###############################################################
-
+#### Assess correlations between key variables
 #### Dim 1, then Dim 2
 #### Land
 cor(hhnamibia_wealthdim$Dim.1, hhnamibia_wealthdim$AnyLand, method="pearson", use="pairwise.complete.obs")
@@ -808,10 +788,7 @@ cor(hhnamibia_wealthdim$Dim.2, hhnamibia_wealthdim$TV, method="pearson", use="pa
 
 ##### Merge and clean data- note that, among those who report days of low energy and little energy, peak around 1 week (cognitive ease of 1 week?). Distributions are relatively similar across the sexes.
 ```{r mh vars, echo = TRUE}
-###########################
-### Merge into womens file ####
-###########################
-
+#### Merge into women's files
 vars_to_keep_households <- c("HV000", "HV001", "HV002", "Dim.1", "Dim.2", "HV271")
 hh_wealth <- hhnamibia_wealthdim[vars_to_keep_households]
 
@@ -1352,6 +1329,13 @@ var(namibia_hh_men_woman$lowenergy_days, na.rm = T)
 ```
 
 
+#### Binary code for mental health endorsement 
+```{mh zero or one, include = FALSE}
+# Create new dataframe with alternative approach to variables
+MH_zero_one <- namibia_hh_men_woman %>% mutate(any_nointerest_days = ifelse(nointerest_days == 0, "no", "yes"), any_nointerest_days = as.factor(any_nointerest_days), any_lowenergy_days = ifelse(lowenergy_days == 0, "None", "Yes"), any_lowenergy_days = as.factor(any_lowenergy_days))
+
+
+```
 
 
 #### Couples Data from DHS
@@ -1514,3 +1498,4 @@ summary(m2 <- glm.nb(hub_lowenergy_days ~  MV012 + V025 + MV106  + hub_wife_disc
 summary(m3 <- glm.nb(wife_nointerest_days ~ V012 + V025 + V106  + hub_wife_discord + Dim.1 + Dim.2 ,data = namib_couples))
 summary(m4 <- glm.nb(wife_lowenergy_days ~  V012 + V025 + V106  + hub_wife_discord  + Dim.1 + Dim.2 ,data = namib_couples))
 ```
+
